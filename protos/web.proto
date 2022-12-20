@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package chatweb;
+
+service ChatWebService {
+  rpc ChatWebUnary(ChatWebUnaryRequest) returns (ChatWebUnaryResponse) {};
+  rpc ChatWebServerSideStream(ChatWebServerSideStreamRequest) returns (stream ChatWebServerSideStreamResponse) {};
+}
+
+message ChatWebUnaryRequest {
+  string id = 1;
+  string message = 2;
+}
+
+message ChatWebUnaryResponse {
+  string id = 1;
+  string message = 2;
+}
+
+message ChatWebServerSideStreamRequest {
+  string username = 1;
+}
+
+message ChatWebServerSideStreamResponse {
+  string id = 1;
+  string message = 2;
+}

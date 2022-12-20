@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package chatapp;
+
+service ChatAppService {
+  rpc ChatAppBidirectionalStream(stream ChatAppStreamRequest) returns (stream ChatAppStreamResponse) {};
+}
+
+message ChatAppStreamRequest {
+  string message = 1;
+}
+
+message ChatAppStreamResponse {
+  string message = 1;
+}

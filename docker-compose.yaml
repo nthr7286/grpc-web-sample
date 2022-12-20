@@ -1,0 +1,62 @@
+version: "3.8"
+services:
+  front-envoy:
+    build:
+      context: .
+      dockerfile: front-envoy.Dockerfile
+    networks:
+    - envoymesh
+    ports:
+    - "80:80"
+    - "50051:50051"
+    - "9901:9901"
+  client-react-app:
+    build:
+      context: .
+      dockerfile: client-react-app.Dockerfile
+    networks:
+    - envoymesh
+    ports:
+    - "9902:9901"
+  client-react-service-envoy:
+    build:
+      context: .
+      dockerfile: client-react-service-envoy.Dockerfile
+    networks:
+    - envoymesh
+    ports:
+    - "9903:9901"
+  proxy-service-envoy:
+    build:
+      context: .
+      dockerfile: proxy-service-envoy.Dockerfile
+    networks:
+    - envoymesh
+    ports:
+    - "9904:9901"
+  proxy-app:
+    build:
+      context: .
+      dockerfile: proxy-app.Dockerfile
+    networks:
+    - envoymesh
+    ports:
+    - "9905:9901"
+  server-service-envoy:
+    build:
+      context: .
+      dockerfile: server-service-envoy.Dockerfile
+    networks:
+    - envoymesh
+    ports:
+    - "9906:9901"
+  server-app:
+    build:
+      context: .
+      dockerfile: server-app.Dockerfile
+    networks:
+    - envoymesh
+    ports:
+    - "9907:9901"
+networks:
+  envoymesh: {}
