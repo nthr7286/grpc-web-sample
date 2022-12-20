@@ -2,8 +2,8 @@
 
 ### 事前準備
 
-Docker Deamon が起動している
-Docker Compose V2 コマンドが実行できる
+- Docker Deamon が起動している
+- Docker Compose V2 コマンドが実行できる
 
 ### 準備
 
@@ -36,7 +36,7 @@ docker compose down
 
 ### 注意
 
-OSによってうまく動かないかもしれないところ。
+OSやアーキテクチャによってうまく動かないかもしれないところ
 
 **proxy-app/src/index.ts**
 
