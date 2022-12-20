@@ -1,11 +1,11 @@
 # gRPC-Web Sample
 
-#### 事前準備
+### 事前準備
 
 Docker Deamon が起動している
 Docker Compose V2 コマンドが実行できる
 
-#### 準備
+### 準備
 
 .env の作成
 
@@ -22,19 +22,19 @@ Docker のビルド
 docker compose build
 ```
 
-#### 起動
+### 起動
 
 ```
 docker compose up -d
 ```
 
-#### 終了
+### 終了
 
 ```
 docker compose down
 ```
 
-#### 注意
+### 注意
 
 OSによってうまく動かないかもしれないところ。
 
