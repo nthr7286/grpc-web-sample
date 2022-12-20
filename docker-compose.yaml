@@ -8,7 +8,8 @@ services:
     - envoymesh
     ports:
     - "80:80"
-    - "50051:50051"
+    - "40000:40000"
+    - "50000:50000"
     - "9901:9901"
   client-react-app:
     build:

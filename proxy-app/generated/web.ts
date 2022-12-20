@@ -14,6 +14,7 @@ export interface ProtoGrpcType {
     ChatWebService: SubtypeConstructor<typeof grpc.Client, _chatweb_ChatWebServiceClient> & { service: _chatweb_ChatWebServiceDefinition }
     ChatWebUnaryRequest: MessageTypeDefinition
     ChatWebUnaryResponse: MessageTypeDefinition
+    Status: MessageTypeDefinition
   }
 }
 

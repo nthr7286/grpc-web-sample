@@ -5,6 +5,7 @@
   "license": "MIT",
   "scripts": {
     "start": "node lib/src/index",
+    "test": "ts-node src/test",
     "dev": "tsnd --respawn --quiet src/index",
     "build": "tsc",
     "proto:gen": "./proto-gen.sh"

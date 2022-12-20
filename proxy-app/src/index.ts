@@ -1,21 +1,27 @@
 import { resolve } from 'path'
 import {
+  credentials,
   Server,
   ServerCredentials,
   loadPackageDefinition,
-  ServerWritableStream,
+  // ServerWritableStream,
+  ClientDuplexStream,
   ServiceError,
   status,
+  Metadata,
 } from 'grpc'
 import { loadSync } from '@grpc/proto-loader'
-import { ProtoGrpcType } from '../generated/web'
+import { ProtoGrpcType as AppProtoGrpcType } from '../generated/app'
+import { ProtoGrpcType as WebProtoGrpcType} from '../generated/web'
 import { ChatWebServiceHandlers } from '../generated/chatweb/ChatWebService'
-import { ChatWebServerSideStreamRequest, ChatWebServerSideStreamRequest__Output } from '../generated/chatweb/ChatWebServerSideStreamRequest'
+// import { ChatWebServerSideStreamRequest, ChatWebServerSideStreamRequest__Output } from '../generated/chatweb/ChatWebServerSideStreamRequest'
 import { config } from 'dotenv'
 import { expand } from 'dotenv-expand'
 import { ChatWebServerSideStreamResponse } from '../generated/chatweb/ChatWebServerSideStreamResponse'
 import { randomUUID } from 'crypto'
 import { ChatWebUnaryResponse } from '../generated/chatweb/ChatWebUnaryResponse'
+import { ChatAppStreamRequest, ChatAppStreamRequest__Output } from '../generated/chatapp/ChatAppStreamRequest'
+import { ChatAppStreamResponse, ChatAppStreamResponse__Output } from '../generated/chatapp/ChatAppStreamResponse'
 
 expand(config())
 
@@ -31,16 +37,22 @@ class CustomServiceError extends Error implements ServiceError {
 
 const main = () => {
   const port = process.env.PORT ?? '50051'
+  const appTargetPort = process.env.APP_TARGET_PORT ?? '50051'
   const appProtoFile = resolve(process.cwd(), '../protos/app.proto')
   const webProtoFile = resolve(process.cwd(), '../protos/web.proto')
-  const { ChatWebService } = ((loadPackageDefinition(loadSync(webProtoFile)) as unknown) as ProtoGrpcType).chatweb
-
-  const callMap = new Map<
+  const { ChatAppService } = ((loadPackageDefinition(loadSync(appProtoFile)) as unknown) as AppProtoGrpcType).chatapp
+  console.log('appTargetPort', appTargetPort)
+  const chatAppServiceClient = new ChatAppService(
+    `host.docker.internal:${appTargetPort}`,
+    credentials.createInsecure(),
+  )
+  const { ChatWebService } = ((loadPackageDefinition(loadSync(webProtoFile)) as unknown) as WebProtoGrpcType).chatweb
+  const chatAppBidirectionalStreamCallMap = new Map<
     string,
-    ServerWritableStream<ChatWebServerSideStreamRequest__Output, ChatWebServerSideStreamResponse>
+    ClientDuplexStream<ChatAppStreamRequest, ChatAppStreamResponse__Output>
   >()
   const handlers: ChatWebServiceHandlers = {
-    ChatWebUnary: (call, callback) => {
+    ChatWebUnary: async (call, callback) => {
       console.log(call.request.id, call.request.message)
       const { id, message } = call.request
       if (!id) {
@@ -49,37 +61,110 @@ const main = () => {
         callback(error, null)
         return
       }
-      const streamCall = callMap.get(id)
-      const streamResponse: ChatWebServerSideStreamResponse = {
-        id,
+      const chatAppBidirectionalStreamCall = chatAppBidirectionalStreamCallMap.get(id)
+      if (!chatAppBidirectionalStreamCall) {
+        const error: ServiceError = new CustomServiceError(status.INVALID_ARGUMENT, 'id invalid', 'id invalid')
+        console.error(error)
+        callback(error, null)
+        return
+      }
+      console.log(
+        chatAppBidirectionalStreamCall.writableEnded,
+        chatAppBidirectionalStreamCall.writableFinished,
+        chatAppBidirectionalStreamCall.readableEnded,
+      )
+      if (chatAppBidirectionalStreamCall.writableEnded) {
+        const error: ServiceError = new CustomServiceError(status.INVALID_ARGUMENT, 'chatAppBidirectionalStream is not writable', 'chatAppBidirectionalStream is not writable')
+        console.error(error)
+        callback(error, null)
+        return
+      }
+      const chatAppBidirectionalStreamRequest: ChatAppStreamRequest = {
         message,
       }
-      streamCall?.write(streamResponse)
-      streamCall?.end()
+      chatAppBidirectionalStreamCall.write(chatAppBidirectionalStreamRequest)
       const response: ChatWebUnaryResponse = {
         id,
         message: 'success',
       }
       callback(null, response)
+      return
     },
-    ChatWebServerSideStream: call => {
+    ChatWebServerSideStream: async call => {
       const { 'x-request-id': requestIdMetadataValue } = call.metadata.getMap()
       const requestId = requestIdMetadataValue.toString() ?? randomUUID()
-      callMap.set(requestId, call)
-      console.log(call.metadata.getMap())
-      console.log('ChatWebServerSideStream', requestId, call.request.username)
+      const clientCall = chatAppServiceClient.ChatAppBidirectionalStream()
+      console.log('chatWebServerSideStream connected', call.request.username)
+
+      clientCall.on('data', (chunk: ChatAppStreamResponse__Output) => {
+        console.log(chunk)
+        const {
+          message,
+        } = chunk
+        const response: ChatWebServerSideStreamResponse = {
+          id: requestId,
+          message,
+        }
+        call.write(response)
+        return
+      })
+      clientCall.on('error', error => {
+        console.error('chatAppStreamError', error)
+        call.emit('error', new Error(error.message))
+        if (error instanceof CustomServiceError) {
+          const response: ChatWebServerSideStreamResponse = {
+            id: requestId,
+            error: {
+              code: error.code,
+              message: error.message,
+              details: error.details
+            }
+          }
+          call.write(response)
+        }
+        else if (error instanceof Error) {
+          const response: ChatWebServerSideStreamResponse = {
+            id: requestId,
+            error: {
+              code: 14,
+              message: error.message,
+            }
+          }
+          call.write(response)
+        }
+        call.end()
+        chatAppBidirectionalStreamCallMap.delete(requestId)
+        return
+      })
+      clientCall.on('close', () => {
+        console.warn('chatAppStreamClose')
+        call.end()
+        chatAppBidirectionalStreamCallMap.delete(requestId)
+        return
+      })
+      clientCall.on('end', () => {
+        console.info('chatAppStreamEnd')
+        call.end()
+        chatAppBidirectionalStreamCallMap.delete(requestId)
+        return
+      })
+      chatAppBidirectionalStreamCallMap.set(requestId, clientCall)
+
       const response: ChatWebServerSideStreamResponse = {
         id: requestId,
-        message: `Hello ${call.request.username}!`
       }
       call.write(response)
-      // call.end()
-      call.on('error', error => {
-        console.error(error)
-      })
-      call.on('end', () => {
-        console.info('call end', requestId)
-      })
+      // call.on('error', error => {
+      //   console.error(error)
+      //   call.end()
+      // })
+      // call.on('close', () => {
+      //   console.warn('call closed')
+      // })
+      // call.on('end', () => {
+      //   console.info('call end', requestId)
+      //   chatAppBidirectionalStreamCallMap.delete(requestId)
+      // })
     }
   }
   const server = new Server()

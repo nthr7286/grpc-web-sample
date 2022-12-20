@@ -7,6 +7,12 @@ service ChatWebService {
   rpc ChatWebServerSideStream(ChatWebServerSideStreamRequest) returns (stream ChatWebServerSideStreamResponse) {};
 }
 
+message Status {
+  int32 code = 1;
+  string message = 2;
+  string details = 3;
+}
+
 message ChatWebUnaryRequest {
   string id = 1;
   string message = 2;
@@ -24,4 +30,5 @@ message ChatWebServerSideStreamRequest {
 message ChatWebServerSideStreamResponse {
   string id = 1;
   string message = 2;
+  Status error = 3;
 }
