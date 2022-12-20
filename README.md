@@ -1,35 +1,40 @@
 # gRPC-Web Sample
 
-##### 事前準備
+#### 事前準備
 
 Docker Deamon が起動している
 Docker Compose V2 コマンドが実行できる
 
-##### 準備
+#### 準備
+
+.env の作成
 
 ```
-# .env の作成
 echo "REACT_APP_PROXY_TARGET_PORT=40000" > client-react-app/.env
 echo "PORT=50051
 APP_TARGET_PORT=50000" > proxy-app/.env
 echo "PORT=50051" > server-app/.env
-# Docker のビルド
+```
+
+Docker のビルド
+
+```
 docker compose build
 ```
 
-##### 起動
+#### 起動
 
 ```
 docker compose up -d
 ```
 
-##### 終了
+#### 終了
 
 ```
 docker compose down
 ```
 
-##### 注意
+#### 注意
 
 OSによってうまく動かないかもしれないところ。
 
